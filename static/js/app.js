@@ -20,77 +20,153 @@ d3.json(data).then((data) => {
         // Append the option element to selectSubject
         selectSubject.appendChild(opt);
     })
-    
-    ///////////////// CREATE DEMOGRAPHIC INFO /////////////////
 
-    var metadata = data.metadata;
-    // 
-    var dropdown = d3.select("#selDataset");
-    var selectedID = dropdown.property("value"); 
-    metadata.forEach((m) => {
-        if (m.id == selectedID) {
-            document.getElementById("sample-metadata").innerHTML = 
-                `<strong>ID:</strong> ${m.id} <br>
-                <strong>Ethincity:</strong> ${m.ethnicity} <br>
-                <strong>Gender:</strong> ${m.gender} <br> 
-                <strong>Age:</strong> ${m.age} <br> 
-                <strong>Location:</strong> ${m.location} <br> 
-                <strong>Belly Button Type:</strong> ${m.bbtype} <br> 
-                <strong>Wash Frequency:</strong> ${m.wfreq} <br> `;
-        }
-    })
-    
-    d3.selectAll("#selDataset").on("change", getDemoInfo);
-    function getDemoInfo() {
-    // Set reference to metadata
-    var metadata = data.metadata;
-    // 
-    var dropdown = d3.select("#selDataset");
-    var selectedID = dropdown.property("value"); 
-    metadata.forEach((m) => {
-        if (m.id == selectedID) {
-            document.getElementById("sample-metadata").innerHTML = 
-                `<strong>ID:</strong> ${m.id} <br>
-                <strong>Ethincity:</strong> ${m.ethnicity} <br>
-                <strong>Gender:</strong> ${m.gender} <br> 
-                <strong>Age:</strong> ${m.age} <br> 
-                <strong>Location:</strong> ${m.location} <br> 
-                <strong>Belly Button Type:</strong> ${m.bbtype} <br> 
-                <strong>Wash Frequency:</strong> ${m.wfreq} <br> `;
-        }
-    })};
-
-    var samples = data.samples;
-    console.log(samples)
-    
-
-    samples.forEach((s) => {
-        console.log(s.id);
+    // Create a function to update the page with plots and demographic info
+    function updatePage() {
+        // Create a reference to the data's metadata array
+        var metadata = data.metadata;
+        // Set dropdown variable for input in selDataset
+        var dropdown = d3.select("#selDataset");
+        // Reference the value in dropdown
+        var selectedID = dropdown.property("value"); 
+        // Using a for-loop, create the demographic info and the gauge plot
+        metadata.forEach((m) => {
         
-        // Create an option element
-        var opt = document.createElement("option");
-        // Set value for id
-        opt.value = s.id;
-        // Set text for id
-        opt.text = s.id;
-        // Append the option element to selectSubject
-        selectSubject.appendChild(opt);
+        ///////////////// CREATE DEMOGRAPHIC INFO /////////////////
 
-        //console.log(s.sample_values);
-        //console.log(s.otu_labels)
-   });
-   // var trace1 = {
-   //     x:,
-   //     y: data.samples.id,
-   //     type: 'bar',
-   //     orientation: 'h'
-   // }
+        // If the id in the metadata matches the selected id
+        if (m.id == selectedID) {
+            // Change the HTML content found in sample-metadata
+            document.getElementById("sample-metadata").innerHTML = 
+                // Print the selected subject's demographic info 
+                `<b>ID:</b> ${m.id} <br>
+                <b>Ethincity:</b> ${m.ethnicity} <br>
+                <b>Gender:</b> ${m.gender} <br> 
+                <b>Age:</b> ${m.age} <br> 
+                <b>Location:</b> ${m.location} <br> 
+                <b>Belly Button Type:</b> ${m.bbtype} <br> 
+                <b>Wash Frequency:</b> ${m.wfreq} <br> `;
+
+            ///////////////// CREATE GAUGE PLOT /////////////////
+                
+            // Create an array from 9 to 0 
+            var numArray = Array.from({length: 10}, (v,k) => k).reverse();
+                
+            // Create trace
+            var gaugeTrace =  {
+                value: m.wfreq,
+                title: { text: "<b>Belly Button Washing Frequency</b> <br> Scrubs Per Week" },
+                type: "indicator",
+                // Identify plot type and displays value beneath gauge plot
+                mode: "gauge+number",
+                gauge: {
+                    // Adjust axis range and tick marks
+                    axis: { range: [null, 9], 
+                            ticktext:  numArray,
+                            tickvals: numArray
+                    },
+                    // Create sections based on the provided ranges and adjusts section colour 
+                    steps: [
+                        {range: [8, 9], color: "rgba(0,105,11,1)"},
+                        {range: [7, 8], color: "rgba(10,120,22,1)"},
+                        {range: [6, 7], color: "rgba(14,127,0,1)"},
+                        {range: [5, 6], color: "rgba(110,154,22,1)"},
+                        {range: [4, 5], color: "rgba(170,202,42,1)"},
+                        {range: [3, 4], color: "rgba(202,209,95,1)"},
+                        {range: [2, 3], color: "rgba(210,206,145,1)"},
+                        {range: [1, 2], color: "rgba(225,226,202,1)"},
+                        {range: [0, 1], color: "rgba(235, 230,215,1)"}
+                    ],
+                    // Remove inside bar in gauge plot
+                    bar: {thickness: 0} ,
+                    // Create threshold that adjusts based on the subject's wash frequency
+                    threshold: {
+                        line: {color: "rgba(128,5,32,1)", width: 4 },
+                        thickness: 1,
+                        value: m.wfreq
+                    }
+                }
+            };
+            // Create the data array for the plot
+            var gaugeData = [gaugeTrace];
+            // Plot the chart to a div tag with id "gauge"
+            Plotly.newPlot("gauge", gaugeData);
+        };
+    });
+    
+    // Create a reference to the data' samples array
+    var samples = data.samples;
+    // Initialize a blank list for samples in bar chart
+    var barList = [];
+
+    // Using a for-loop
+    samples.forEach((sample) => {
+        // If the id value in the sample matches the selected ID
+        if(sample.id == selectedID) {
+            // Reference specific arrays in the sample
+            var otuIds = sample.otu_ids;
+            var sampleValues = sample.sample_values;
+            var otuLabels = sample.otu_labels;
+
+            ///////////////// CREATE BUBBLE PLOT /////////////////
+
+            // Create trace
+            var bubbleTrace = {
+                // Set x and y values
+                x: otuIds,
+                y: sampleValues,
+                mode: "markers",
+                // Set text
+                text:otuLabels,
+                // Adjust marker color and size accordingly
+                marker: {
+                    color:otuIds,
+                    size:sampleValues,
+                    colorscale: "Earth"
+                }
+            };
+            // Create the data array for the plot
+            var bubbleData = [bubbleTrace]
+            // Plot the chart to a div tag with id "bubble"
+            Plotly.newPlot("bubble",bubbleData)
+
+            // Using a for-loop, reoganize the values into a new array for correct readibility for sorting
+            for (var j = 0; j < sampleValues.length; j++)
+            // Push new array to the empty barList 
+            barList.push ({'otu_ids': `OTU ${otuIds[j]}`, 
+                            'value': sampleValues[j], 
+                            'label': otuLabels[j]});
+        };
+    });
+
+    // Sort the list in ascending order
+    var sorted = barList.sort((a,b) => b.value - a.value);
+    // Select only top 10
+    var sliced = sorted.slice(0,10);
+    // Reverse the list to ensure it is in descending order
+    var reversed = sliced.reverse();
+
+    ///////////////// CREATE BAR CHART /////////////////
+
+    // Create trace
+    var barTrace = {
+        // Set x and y values
+        x: reversed.map(r => r.value),
+        y: reversed.map(r => r.otu_ids),
+        // Set text
+        text: reversed.map(r => r.label),
+        type: "bar",
+        // Make sure the bar chart is horizontal
+        orientation: "h"
+    };
+    // Create the data array for the plot
+    var barData = [barTrace];
+    // Plot the chart to a div tag with id "bar"
+    Plotly.newPlot("bar",barData);
+    };
+
+    // Load page with plots and info based on the input value in selDataset
+    d3.selectAll("#selDataset").selectAll(updatePage)
+    // Update page with plots and info based on the input value in selDataset
+    d3.selectAll("#selDataset").on("change", updatePage);
 });
-
-//* Use `sample_values` as the values for the bar chart.
-
-//* Use `otu_ids` as the labels for the bar chart.
-
-//* Use `otu_labels` as the hovertext for the chart.
-
-// Plotly.newPlot('myDiv', data);
